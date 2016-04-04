@@ -5,7 +5,7 @@ date: "3 de abril de 2016"
 output: html_document
 ---
 
-# Abstract
+#Abstract
 
 It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a [Fitbit](http://www.fitbit.com/), [Nike Fuelband](http://www.nike.com/us/en_us/c/nikeplus-fuel), or [Jawbone Up](https://jawbone.com/up). These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
@@ -13,15 +13,16 @@ This assignment makes use of data from a personal activity monitoring device. Th
 
 
 
-### Content
+###Content
 
 1. Data Processing
 2. Data Analysis
-3. Computational Results
+3. Data Analysis after Imputing Missing Values
+4. Comparative Analysis
 
 
 
-**Data Processing**
+###Data Processing
 
 ```{r loadRequiredLibs, results='hide', echo=FALSE, message=FALSE, warning=FALSE}
 load_libs <- function(...){
@@ -32,7 +33,7 @@ load_libs <- function(...){
   }
 }
 
-load_libs("dplyr","plyr","data.table")
+load_libs("dplyr","plyr","data.table","ggplot2","lattice")
 ```
 
 
@@ -40,7 +41,8 @@ The data for this assignment can be downloaded from the course web site:
 
 + Dataset: [Activity monitoring data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) [52K]
 
-```{r loadMeasuredData, results='hide', echo=TRUE, message=FALSE, warning=FALSE, cache=TRUE, tidy=TRUE}
+
+```{r loadMD, results='hide', echo=T, message=F, warning=F, cache=T, tidy=T}
 temp <- tempfile()
 setInternet2(use = TRUE)
 download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", temp)
@@ -49,12 +51,148 @@ unlink(temp)
 ```
 
 
-The variables included in this dataset are:
+The variables included in this dataset are (**`r paste(colnames(measuredData), sep=", ")`**):
+
+```{r showMD, results='markup', echo=F, message=F, warning=F, cache=F}
+head(measuredData, 1)
+```
 
 + **steps:** Number of steps taking in a 5-minute interval (missing values are coded as NA)
 + **date:** The date on which the measurement was taken in YYYY-MM-DD format
 + **interval:** Identifier for the 5-minute interval in which measurement was taken
 
-The dataset is stored in a comma-separated-value (CSV) file and there are a total of `r format(nrow(measuredData), big.mark=",", scientific=FALSE)` observations in this dataset.
+
+```{r exploreMD, results='hide', echo=T, message=F, warning=F, cache=T, tidy=F}
+obsCount <- nrow(measuredData)
+naStepCount <- length(measuredData$steps[is.na(measuredData$steps)])
+```
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of **`r format(obsCount, big.mark=",", scientific=FALSE)`** observations with **`r format(naStepCount, big.mark=",", scientific=FALSE)`** NA steps in this dataset.
 
 
+**steps** with missing values are ignored.
+
+
+
+###Data Analysis
+
+```{r cleanMD, results='hide', echo=T, message=F, warning=F, cache=T, tidy=F}
+analyticData <- measuredData[complete.cases(measuredData),]
+analyticData$steps <- as.numeric(analyticData$steps)
+analyticData$date <- as.Date(analyticData$date, "%Y-%m-%d")
+```
+
+A total of **`r format(nrow(analyticData), big.mark=",", scientific=FALSE)`** observations are curated for analysis.
+
+```{r showAD, results='markup', echo=F, message=F, warning=F, cache=F}
+printableAD <- analyticData
+printableAD$date <- as.character(analyticData$date)
+head(printableAD, 2)
+tail(printableAD, 2)
+```
+
+
+**Mean Total number of Steps per Day**
+
+```{r results='hide', echo=T, message=F, warning=F, cache=F}
+meanSteps <- mean(analyticData$steps)
+medianSteps <- median(analyticData$steps)
+
+qplot(date, steps, data=analyticData, stat="summary", fun.y="mean", geom="histogram", xlab="") + 
+  geom_hline(yintercept = meanSteps, colour="Yellow") +
+  geom_hline(yintercept = medianSteps, colour="Green")
+```
+
+Analysis show a Mean of **`r format(meanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(medianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(analyticData$date), "%d %b %Y")`** to **`r format(max(analyticData$date), "%d %b %Y")`**.
+
+
+**Average daily Activity Pattern**
+
+```{r results='hide', echo=T, message=F, warning=F, cache=F}
+sData <- ddply(analyticData, "interval", summarise, steps = mean(steps))
+maxMeanSteps <- max(sData$steps)
+maxMeanStepsInterval <- sData$interval[sData$steps == maxMeanSteps]
+
+qplot(interval, steps, data=sData, geom="line") + 
+  geom_point(aes(x = maxMeanStepsInterval, y = maxMeanSteps), colour="Green")
+```
+
+Interval **`r maxMeanStepsInterval`** contains the maximum number of steps on average across all the days in the dataset.
+
+
+
+###Data Analysis after Imputing Missing Values 
+
+All missing values will be substituted for the mean number of steps for the respective day.
+
+```{r results='hide', echo=T, message=F, warning=F, cache=T, tidy=F}
+imputedAD <- measuredData
+iData <- ddply(analyticData, "date", summarise, steps = mean(steps))
+for(index in 1:length(imputedAD$steps))
+{
+  if(is.na(imputedAD$steps[index]) || imputedAD$steps[index] == 0)
+  {
+    imeanStepsPerDay <- iData$steps[iData$date == imputedAD$date[index]]
+    if(length(imeanStepsPerDay) > 0)
+    {
+      imputedAD$steps[index] <- imeanStepsPerDay
+    }
+    else
+    {  
+      imputedAD$steps[index] <- "0"
+    }
+  }
+}
+imputedAD$steps <- as.numeric(imputedAD$steps)
+imputedAD$date <- as.Date(imputedAD$date, "%Y-%m-%d")
+```
+
+A total of **`r format(nrow(imputedAD), big.mark=",", scientific=FALSE)`** observations are curated for analysis after imputing missing values with the mean steps grouped by interval for the respective observation.
+
+```{r showImputedAD, results='markup', echo=F, message=F, warning=F, cache=F}
+printableAD <- imputedAD
+printableAD$date <- as.character(imputedAD$date)
+head(printableAD, 2)
+tail(printableAD, 2)
+```
+
+
+**Mean Total number of Steps per Day**
+
+```{r results='hide', echo=T, message=F, warning=F, cache=F}
+imeanSteps <- mean(imputedAD$steps)
+imedianSteps <- median(imputedAD$steps)
+
+qplot(date, steps, data=imputedAD, stat="summary", fun.y="mean", geom="histogram", xlab="") + 
+  geom_hline(yintercept = imeanSteps, colour="Yellow") +
+  geom_hline(yintercept = imedianSteps, colour="Green")
+```
+
+Analysis show a Mean of **`r format(imeanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(imedianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(imputedAD$date), "%d %b %Y")`** to **`r format(max(imputedAD$date), "%d %b %Y")`** after imputing missing values.
+
+
+**Average daily Activity Pattern**
+
+```{r results='hide', echo=T, message=F, warning=F, cache=F}
+sData <- ddply(analyticData, "interval", summarise, steps = mean(steps))
+maxMeanSteps <- max(sData$steps)
+maxMeanStepsInterval <- sData$interval[sData$steps == maxMeanSteps]
+
+iData <- ddply(imputedAD, "interval", summarise, steps = mean(steps))
+imaxMeanSteps <- max(iData$steps)
+imaxMeanStepsInterval <- iData$interval[iData$steps == imaxMeanSteps]
+
+ggplot() +
+  geom_line(aes(x=interval, y=steps), data=sData, colour="black") +
+  geom_line(aes(x=interval, y=steps), data=iData, colour="pink")
+```
+
+Interval **`r imaxMeanStepsInterval`** contains the maximum number of steps on average across all the days in the dataset after imputing missing values.
+
+
+
+###Comparative Analysis
+
+This study has analysed personal movement using activity monitoring devices for two months on a randomly selected population. Despite of the missing values in the collected data, the tendency still more or less invariable, each person's movement hit a maximum at an interval of **`r imaxMeanStepsInterval`** steps on average.
+
+Analysis show a Mean of **`r format(meanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(medianSteps, big.mark=",", scientific=FALSE)`** steps per day. And, a Mean of **`r format(imeanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(imedianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(imputedAD$date), "%d %b %Y")`** to **`r format(max(imputedAD$date), "%d %b %Y")`** after imputing missing values.

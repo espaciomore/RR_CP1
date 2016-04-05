@@ -33,7 +33,7 @@ load_libs <- function(...){
   }
 }
 
-load_libs("dplyr","plyr","data.table","ggplot2","lattice")
+load_libs("dplyr","plyr","data.table","ggplot2","lattice","cowplot")
 ```
 
 
@@ -80,6 +80,7 @@ The dataset is stored in a comma-separated-value (CSV) file and there are a tota
 analyticData <- measuredData[complete.cases(measuredData),]
 analyticData$steps <- as.numeric(analyticData$steps)
 analyticData$date <- as.Date(analyticData$date, "%Y-%m-%d")
+analyticData <- subset(analyticData, steps > 0)
 ```
 
 A total of **`r format(nrow(analyticData), big.mark=",", scientific=FALSE)`** observations are curated for analysis.
@@ -98,9 +99,9 @@ tail(printableAD, 2)
 meanSteps <- mean(analyticData$steps)
 medianSteps <- median(analyticData$steps)
 
-qplot(date, steps, data=analyticData, stat="summary", fun.y="mean", geom="histogram", xlab="") + 
-  geom_hline(yintercept = meanSteps, colour="Yellow") +
-  geom_hline(yintercept = medianSteps, colour="Green")
+meanData <- ddply(analyticData, "date", summarise, steps = mean(steps))
+
+hist(meanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
 ```
 
 Analysis show a Mean of **`r format(meanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(medianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(analyticData$date), "%d %b %Y")`** to **`r format(max(analyticData$date), "%d %b %Y")`**.
@@ -145,6 +146,7 @@ for(index in 1:length(imputedAD$steps))
 }
 imputedAD$steps <- as.numeric(imputedAD$steps)
 imputedAD$date <- as.Date(imputedAD$date, "%Y-%m-%d")
+imputedAD <- subset(imputedAD, steps > 0)
 ```
 
 A total of **`r format(nrow(imputedAD), big.mark=",", scientific=FALSE)`** observations are curated for analysis after imputing missing values with the mean steps grouped by interval for the respective observation.
@@ -163,9 +165,10 @@ tail(printableAD, 2)
 imeanSteps <- mean(imputedAD$steps)
 imedianSteps <- median(imputedAD$steps)
 
-qplot(date, steps, data=imputedAD, stat="summary", fun.y="mean", geom="histogram", xlab="") + 
-  geom_hline(yintercept = imeanSteps, colour="Yellow") +
-  geom_hline(yintercept = imedianSteps, colour="Green")
+imeanData <- ddply(imputedAD, "date", summarise, steps = mean(steps))
+
+hist(imeanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
+hist(meanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", add=T, col=rgb(0, 1, 0, 0.25))
 ```
 
 Analysis show a Mean of **`r format(imeanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(imedianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(imputedAD$date), "%d %b %Y")`** to **`r format(max(imputedAD$date), "%d %b %Y")`** after imputing missing values.
@@ -173,26 +176,25 @@ Analysis show a Mean of **`r format(imeanSteps, big.mark=",", scientific=FALSE)`
 
 **Average daily Activity Pattern**
 
+Now compairing the number of steps per day between weekdays and weekends.
+
 ```{r results='hide', echo=T, message=F, warning=F, cache=F}
-sData <- ddply(analyticData, "interval", summarise, steps = mean(steps))
-maxMeanSteps <- max(sData$steps)
-maxMeanStepsInterval <- sData$interval[sData$steps == maxMeanSteps]
+daysData <- ddply(imputedAD, "date", summarise, steps= mean(steps))
+daysData$day <- wday(as.Date(daysData$date))
 
-iData <- ddply(imputedAD, "interval", summarise, steps = mean(steps))
-imaxMeanSteps <- max(iData$steps)
-imaxMeanStepsInterval <- iData$interval[iData$steps == imaxMeanSteps]
+weekdayActivity <- subset(daysData, daysData$day %in% c(2,3,4,5,6))
+weekendActivity <- subset(daysData, daysData$day %in% c(1,7))
 
-ggplot() +
-  geom_line(aes(x=interval, y=steps), data=sData, colour="black") +
-  geom_line(aes(x=interval, y=steps), data=iData, colour="pink")
+p1 <- qplot(date, steps, data=weekdayActivity, geom="point") + geom_line(colour="orange")
+p2 <- qplot(date, steps, data=weekendActivity, geom="point") + geom_line(colour="pink")
+
+plot_grid(p1, p2, labels=c("Weekdays", "Weekends"), ncol = 1, nrow = 2)
 ```
-
-Interval **`r imaxMeanStepsInterval`** contains the maximum number of steps on average across all the days in the dataset after imputing missing values.
 
 
 
 ###Comparative Analysis
 
-This study has analysed personal movement using activity monitoring devices for two months on a randomly selected population. Despite of the missing values in the collected data, the tendency still more or less invariable, each person's movement hit a maximum at an interval of **`r imaxMeanStepsInterval`** steps on average.
+This study has analysed personal movement using activity monitoring devices for two months on a randomly selected population. Despite of the missing values in the collected data, the tendency still more or less invariable, each person's movement hit a maximum at an interval of **`r max(daysData$steps)`** steps on average. Also, the compairison between weekdays and weekend activity has demonstrated that people are more active during the working days than in the end of week.
 
 Analysis show a Mean of **`r format(meanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(medianSteps, big.mark=",", scientific=FALSE)`** steps per day. And, a Mean of **`r format(imeanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(imedianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(imputedAD$date), "%d %b %Y")`** to **`r format(max(imputedAD$date), "%d %b %Y")`** after imputing missing values.

@@ -80,7 +80,6 @@ The dataset is stored in a comma-separated-value (CSV) file and there are a tota
 analyticData <- measuredData[complete.cases(measuredData),]
 analyticData$steps <- as.numeric(analyticData$steps)
 analyticData$date <- as.Date(analyticData$date, "%Y-%m-%d")
-analyticData <- subset(analyticData, steps > 0)
 ```
 
 A total of **`r format(nrow(analyticData), big.mark=",", scientific=FALSE)`** observations are curated for analysis.
@@ -128,7 +127,7 @@ All missing values will be substituted for the mean number of steps for the resp
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=T, tidy=F}
 imputedAD <- measuredData
-iData <- ddply(analyticData, "date", summarise, steps = mean(steps))
+iData <- ddply(subset(analyticData, steps > 0), "date", summarise, steps = mean(steps))
 for(index in 1:length(imputedAD$steps))
 {
   if(is.na(imputedAD$steps[index]) || imputedAD$steps[index] == 0)

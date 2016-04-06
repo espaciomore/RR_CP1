@@ -44,7 +44,8 @@ The data for this assignment can be downloaded from the course web site:
 
 ```{r loadMD, results='hide', echo=T, message=F, warning=F, cache=T, tidy=T}
 temp <- tempfile()
-setInternet2(use = TRUE)
+if(exists("setInternet2", mode="function"))
+  setInternet2(use = TRUE)
 download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", temp)
 measuredData <- read.csv(unz(temp, "activity.csv"))
 unlink(temp)
@@ -95,12 +96,14 @@ tail(printableAD, 2)
 **Mean Total number of Steps per Day**
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=F}
-meanSteps <- mean(analyticData$steps)
-medianSteps <- median(analyticData$steps)
-
 meanData <- ddply(analyticData, "date", summarise, steps = mean(steps))
 
 hist(meanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
+```
+
+```{r results='hide', echo=T, message=F, warning=F, cache=F}
+meanSteps <- mean(analyticData$steps)
+medianSteps <- median(analyticData$steps)
 ```
 
 Analysis show a Mean of **`r format(meanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(medianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(analyticData$date), "%d %b %Y")`** to **`r format(max(analyticData$date), "%d %b %Y")`**.
@@ -127,10 +130,10 @@ All missing values will be substituted for the mean number of steps for the resp
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=T, tidy=F}
 imputedAD <- measuredData
-iData <- ddply(subset(analyticData, steps > 0), "date", summarise, steps = mean(steps))
+iData <- ddply(subset(imputedAD, steps > 0), "date", summarise, steps = mean(steps, na.rm = T))
 for(index in 1:length(imputedAD$steps))
 {
-  if(is.na(imputedAD$steps[index]) || imputedAD$steps[index] == 0)
+  if(is.na(imputedAD$steps[index]))
   {
     imeanStepsPerDay <- iData$steps[iData$date == imputedAD$date[index]]
     if(length(imeanStepsPerDay) > 0)
@@ -143,9 +146,9 @@ for(index in 1:length(imputedAD$steps))
     }
   }
 }
+imputedAD <- imputedAD[complete.cases(imputedAD),]
 imputedAD$steps <- as.numeric(imputedAD$steps)
 imputedAD$date <- as.Date(imputedAD$date, "%Y-%m-%d")
-imputedAD <- subset(imputedAD, steps > 0)
 ```
 
 A total of **`r format(nrow(imputedAD), big.mark=",", scientific=FALSE)`** observations are curated for analysis after imputing missing values with the mean steps grouped by interval for the respective observation.

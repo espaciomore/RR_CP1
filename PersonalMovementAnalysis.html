@@ -139,24 +139,25 @@ qplot(interval, steps, data=sData, geom=&quot;line&quot;) +
 <h3>Data Analysis after Imputing Missing Values</h3>
 <p>All missing values will be substituted for the mean number of steps for the respective day.</p>
 <pre class="r"><code>imputedAD &lt;- measuredData
-iData &lt;- ddply(subset(imputedAD, steps &gt; 0), &quot;date&quot;, summarise, steps = mean(steps, na.rm = T))
+iData &lt;- ddply(measuredData, &quot;date&quot;, summarise, steps = mean(steps, na.rm = T))
+imputedAD$steps &lt;- as.numeric(imputedAD$steps)
+iData$date &lt;- as.character(iData$date)
 for(index in 1:length(imputedAD$steps))
 {
   if(is.na(imputedAD$steps[index]))
   {
     imeanStepsPerDay &lt;- iData$steps[iData$date == imputedAD$date[index]]
-    if(length(imeanStepsPerDay) &gt; 0)
+    if(is.na(imeanStepsPerDay) == F)
     {
       imputedAD$steps[index] &lt;- imeanStepsPerDay
     }
     else
     {  
-      imputedAD$steps[index] &lt;- &quot;0&quot;
+      imputedAD$steps[index] &lt;- as.numeric(0)
     }
   }
 }
 imputedAD &lt;- imputedAD[complete.cases(imputedAD),]
-imputedAD$steps &lt;- as.numeric(imputedAD$steps)
 imputedAD$date &lt;- as.Date(imputedAD$date, &quot;%Y-%m-%d&quot;)</code></pre>
 <p>A total of <strong>17,568</strong> observations are curated for analysis after imputing missing values with the mean steps grouped by interval for the respective observation.</p>
 <pre><code>##   steps       date interval

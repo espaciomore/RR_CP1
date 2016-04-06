@@ -33,7 +33,7 @@ load_libs <- function(...){
   }
 }
 
-load_libs("dplyr","plyr","data.table","ggplot2","lattice","cowplot")
+load_libs("plyr","dplyr","data.table","ggplot2","lattice","cowplot")
 ```
 
 
@@ -130,24 +130,25 @@ All missing values will be substituted for the mean number of steps for the resp
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=T, tidy=F}
 imputedAD <- measuredData
-iData <- ddply(subset(imputedAD, steps > 0), "date", summarise, steps = mean(steps, na.rm = T))
+iData <- ddply(measuredData, "date", summarise, steps = mean(steps, na.rm = T))
+imputedAD$steps <- as.numeric(imputedAD$steps)
+iData$date <- as.character(iData$date)
 for(index in 1:length(imputedAD$steps))
 {
   if(is.na(imputedAD$steps[index]))
   {
     imeanStepsPerDay <- iData$steps[iData$date == imputedAD$date[index]]
-    if(length(imeanStepsPerDay) > 0)
+    if(is.na(imeanStepsPerDay) == F)
     {
       imputedAD$steps[index] <- imeanStepsPerDay
     }
     else
     {  
-      imputedAD$steps[index] <- "0"
+      imputedAD$steps[index] <- as.numeric(0)
     }
   }
 }
 imputedAD <- imputedAD[complete.cases(imputedAD),]
-imputedAD$steps <- as.numeric(imputedAD$steps)
 imputedAD$date <- as.Date(imputedAD$date, "%Y-%m-%d")
 ```
 

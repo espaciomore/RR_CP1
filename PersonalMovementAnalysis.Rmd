@@ -96,14 +96,14 @@ tail(printableAD, 2)
 **Mean Total number of Steps per Day**
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=F}
-meanData <- ddply(analyticData, "date", summarise, steps = mean(steps))
+sumData <- ddply(analyticData, "date", summarise, steps = sum(steps))
 
-hist(meanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
+hist(sumData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
 ```
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=F}
-meanSteps <- mean(analyticData$steps)
-medianSteps <- median(analyticData$steps)
+meanSteps <- mean(sumData$steps)
+medianSteps <- median(sumData$steps)
 ```
 
 Analysis show a Mean of **`r format(meanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(medianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(analyticData$date), "%d %b %Y")`** to **`r format(max(analyticData$date), "%d %b %Y")`**.
@@ -165,13 +165,13 @@ tail(printableAD, 2)
 **Mean Total number of Steps per Day**
 
 ```{r results='hide', echo=T, message=F, warning=F, cache=F}
-imeanSteps <- mean(imputedAD$steps)
-imedianSteps <- median(imputedAD$steps)
+isumData <- ddply(imputedAD, "date", summarise, steps = sum(steps))
 
-imeanData <- ddply(imputedAD, "date", summarise, steps = mean(steps))
+imeanSteps <- mean(isumData$steps)
+imedianSteps <- median(isumData$steps)
 
-hist(imeanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
-hist(meanData$steps, freq= T, ylab= "Days", xlab="Steps", main="", add=T, col=rgb(0, 1, 0, 0.25))
+hist(isumData$steps, freq= T, ylab= "Days", xlab="Steps", main="", col=rgb(0, 1, 0, 0.25))
+hist(sumData$steps, freq= T, ylab= "Days", xlab="Steps", main="", add=T, col=rgb(0, 1, 0, 0.25))
 ```
 
 Analysis show a Mean of **`r format(imeanSteps, big.mark=",", scientific=FALSE)`** and a Median of **`r format(imedianSteps, big.mark=",", scientific=FALSE)`** steps per day from **`r format(min(imputedAD$date), "%d %b %Y")`** to **`r format(max(imputedAD$date), "%d %b %Y")`** after imputing missing values.
